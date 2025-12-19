@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,6 +12,8 @@
 <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <!-- Adexora SDK Included -->
 <script src="https://adexora.com/cdn/ads.js?id=1301"></script>
+<!-- Giga Pub SDK Included (New) -->
+<script src="https://sdk.giga.pub/sdk.js"></script>
 <!-- =================================================================== -->
 <style>
 /* === Professional Gradient & Glow Theme === */
@@ -1028,53 +1031,55 @@ window.watchAd = () => {
     }
     const watchAdBtn = document.getElementById('watchAdBtn');
     watchAdBtn.disabled = true;
-    watchAdBtn.innerText = '🎥 Loading Ad...';
+    watchAdBtn.innerText = '🎥 Loading Giga Ad...';
 
-    try {
-        if (typeof window.Adsgram === 'undefined') { throw new Error("Adsgram SDK not loaded"); }
-        
-        const AdController = window.Adsgram.init({ blockId: "19245" });
-
-        AdController.show().then((result) => {
-            const newWatchedCount = window.adsWatched + 1;
-            // BUG FIX (Robust): Ensure all values are numbers before calculation
-            const currentCoins = parseFloat(window.coins) || 0;
-            const rewardCoins = parseFloat(window.AD_REWARD_COINS) || 5;
-            
-            const updates = {
-                coins: currentCoins + rewardCoins,
-                adsWatched: newWatchedCount,
-                adsWatchedTimestamp: Date.now()
-            };
-            const historyRef = push(ref(database, `users/${TELEGRAM_USER_ID}/coin_history`));
-            updates[`coin_history/${historyRef.key}`] = {
-                reason: 'Ad Reward (Mining)', amount: rewardCoins, timestamp: Date.now()
-            };
-
-            update(window.dbRef, updates).then(() => {
-                if (newWatchedCount < window.ADS_REQUIRED) {
-                    WebApp.showPopup({ message: `+${rewardCoins} Coins! ${window.ADS_REQUIRED - newWatchedCount} more ads needed.` });
-                } else {
-                    WebApp.showPopup({ message: `Congratulations! You can now start mining!` });
-                }
-                playSuccessSound();
-                loadUserData(); // Reload data to ensure sync
-            });
-        }).catch((result) => {
-            WebApp.showAlert("Ad was skipped or failed. No reward was given.");
-        }).finally(() => {
-             if (window.adsWatched < window.ADS_REQUIRED) {
-                watchAdBtn.disabled = false;
-                watchAdBtn.innerText = '🎬 Watch Ad';
-            }
-        });
-
-    } catch (e) {
-        console.error("Adsgram initialization failed:", e);
-        WebApp.showAlert("Ad service failed to load. Please try again later.");
+    // === GIGA PUB LOGIC START ===
+    // Note: Assuming 'main' is the placement ID you want to use as per your request.
+    if (typeof window.showGiga === 'undefined') {
+        console.error("Giga Pub SDK not loaded.");
+        WebApp.showAlert("Ad service failed to load. Please check your internet connection.");
         watchAdBtn.disabled = false;
         watchAdBtn.innerText = '🎬 Watch Ad';
+        return;
     }
+
+    window.showGiga("main").then(() => {
+        // --- SUCCESS LOGIC ---
+        const newWatchedCount = window.adsWatched + 1;
+        // BUG FIX (Robust): Ensure all values are numbers before calculation
+        const currentCoins = parseFloat(window.coins) || 0;
+        const rewardCoins = parseFloat(window.AD_REWARD_COINS) || 5;
+        
+        const updates = {
+            coins: currentCoins + rewardCoins,
+            adsWatched: newWatchedCount,
+            adsWatchedTimestamp: Date.now()
+        };
+        const historyRef = push(ref(database, `users/${TELEGRAM_USER_ID}/coin_history`));
+        updates[`coin_history/${historyRef.key}`] = {
+            reason: 'Ad Reward (Mining)', amount: rewardCoins, timestamp: Date.now()
+        };
+
+        update(window.dbRef, updates).then(() => {
+            if (newWatchedCount < window.ADS_REQUIRED) {
+                WebApp.showPopup({ message: `+${rewardCoins} Coins! ${window.ADS_REQUIRED - newWatchedCount} more ads needed.` });
+            } else {
+                WebApp.showPopup({ message: `Congratulations! You can now start mining!` });
+            }
+            playSuccessSound();
+            loadUserData(); // Reload data to ensure sync
+        });
+    }).catch((e) => {
+        // --- ERROR LOGIC ---
+        console.error("Giga Pub Error:", e);
+        WebApp.showAlert("Ad was skipped or failed. No reward was given.");
+    }).finally(() => {
+         if (window.adsWatched < window.ADS_REQUIRED) {
+            watchAdBtn.disabled = false;
+            watchAdBtn.innerText = '🎬 Watch Ad';
+        }
+    });
+    // === GIGA PUB LOGIC END ===
 }
 
 function updateAdStatus() {
