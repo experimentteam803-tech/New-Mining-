@@ -1290,42 +1290,47 @@ window.watchRewardAd = async (taskId) => {
     button.disabled = true;
     button.innerText = '...';
 
-    // === FINAL LOGIC ===
+    // === UPDATED LOGIC FOR GIGA PUB ===
     let showAdPromise;
-    
-    // Database value ko clean karna (lowercase check)
     const providerName = (task.provider || "").toLowerCase().trim();
 
     if (providerName === 'adsgram') {
         showAdPromise = window.Adsgram.init({ blockId: task.blockId }).show();
     } 
+    else if (providerName === 'gigapub') {
+        // GIGA PUB LOGIC ADDED HERE
+        if (typeof window.showGiga === 'function') {
+             // Admin panel se jo "main" likha hoga, wo yahan aayega
+             const placement = task.blockId || "main"; 
+             showAdPromise = window.showGiga(placement);
+        } else {
+             console.error("Giga Pub SDK not loaded.");
+             WebApp.showAlert("Giga Pub ads failed to load.");
+             button.disabled = false;
+             button.innerText = 'Watch';
+             return;
+        }
+    }
     else if (providerName === 'adexora') {
-        // Adexora Logic
         if (typeof window.showAdexora === 'function') {
-             // Ye Adexora ko call karega. 
-             // Agar Monetag ka ad dikh raha hai, to wo Adexora ki taraf se hi aa raha hai.
              showAdPromise = window.showAdexora();
         } else {
-             console.error("Adexora script not found in head tag");
-             WebApp.showAlert("Ad configuration error. Please try later.");
+             WebApp.showAlert("Adexora ads are not ready.");
              button.disabled = false;
              button.innerText = 'Watch';
              return;
         }
     } 
     else {
-        // Default (Monetag Direct Link)
-        // Agar provider match nahi hua (ya spelling mistake hai database me) to ye chalega
+        // Default: Monetag
         showAdPromise = show_9969043();
     }
-    // ===================
 
     try {
         await showAdPromise;
         
         // --- Success Logic ---
         const newCount = progress.watchedCount + 1;
-        
         const currentCoins = parseFloat(window.coins) || 0;
         const reward = parseFloat(task.reward) || 0;
 
@@ -1349,7 +1354,6 @@ window.watchRewardAd = async (taskId) => {
         loadUserData(); 
     } catch (error) {
         console.error("Ad error:", error);
-        // User ko reward nahi milega agar ad cut kiya ya fail hua
         WebApp.showAlert("Ad was skipped or failed. No reward given.");
         loadUserData(); 
     }
