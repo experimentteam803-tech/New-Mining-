@@ -1467,29 +1467,37 @@ async function processWithdrawalRequest() {
 
 window.watchWithdrawalAd = () => {
     const watchBtn = document.getElementById('watchWithdrawalAdBtn');
-    watchBtn.disabled = true; watchBtn.innerText = '🎥 Loading Ad...';
+    watchBtn.disabled = true; 
+    watchBtn.innerText = '🎥 Loading Giga Ad...';
 
-    try {
-        if (typeof window.Adsgram === 'undefined') { throw new Error("Adsgram SDK not loaded"); }
-        const AdController = window.Adsgram.init({ blockId: "int-18888" });
-
-        AdController.show().then(() => {
-            withdrawalAdsWatched++;
-            document.getElementById('withdrawalAdStatus').innerText = `Ads Watched: ${withdrawalAdsWatched}/${WITHDRAWAL_ADS_REQUIRED}`;
-            if (withdrawalAdsWatched >= WITHDRAWAL_ADS_REQUIRED) {
-                processWithdrawalRequest();
-            }
-        }).catch(() => {
-            WebApp.showAlert("Ad was skipped. Please watch all ads to continue.");
-        }).finally(() => {
-            if (withdrawalAdsWatched < WITHDRAWAL_ADS_REQUIRED) {
-                watchBtn.disabled = false; watchBtn.innerText = '🎬 Watch Ad';
-            }
-        });
-    } catch (e) {
-        WebApp.showAlert("Ad service failed. Try again.");
-        watchBtn.disabled = false; watchBtn.innerText = '🎬 Watch Ad';
+    // === GIGA PUB LOGIC (New) ===
+    if (typeof window.showGiga === 'undefined') {
+        WebApp.showAlert("Ad service failed to load. Please check your internet connection.");
+        watchBtn.disabled = false; 
+        watchBtn.innerText = '🎬 Watch Ad';
+        return;
     }
+
+    // Giga Pub Ad Show
+    window.showGiga("main").then(() => {
+        // --- Success ---
+        withdrawalAdsWatched++;
+        document.getElementById('withdrawalAdStatus').innerText = `Ads Watched: ${withdrawalAdsWatched}/${WITHDRAWAL_ADS_REQUIRED}`;
+        
+        if (withdrawalAdsWatched >= WITHDRAWAL_ADS_REQUIRED) {
+            processWithdrawalRequest();
+        }
+    }).catch((e) => {
+        // --- Error ---
+        console.error("Giga Pub Error:", e);
+        WebApp.showAlert("Ad was skipped. Please watch all ads to continue.");
+    }).finally(() => {
+        // Reset Button if needed
+        if (withdrawalAdsWatched < WITHDRAWAL_ADS_REQUIRED) {
+            watchBtn.disabled = false; 
+            watchBtn.innerText = '🎬 Watch Ad';
+        }
+    });
 }
 
 window.checkPaypalEligibility = () => {
