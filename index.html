@@ -1212,13 +1212,42 @@ function loadAdTasks() {
         const task = allAdTasks[taskId];
         if (task && task.active) {
             activeTasksFound = true;
-            const progress = window.adTaskProgress[taskId] || { watchedCount: 0, timestamp: 0 };
+            
+            // Current progress nikalo
+            let progress = window.adTaskProgress[taskId] || { watchedCount: 0, timestamp: 0 };
+
+            // === 🔥 AUTO REFRESH LOGIC ADDED HERE ===
+            // Cooldown time milliseconds me convert karo (Default 24 hours agar set nahi hai)
+            const cooldownHours = task.cooldownHours || 24;
+            const cooldownMs = cooldownHours * 60 * 60 * 1000;
+            
+            // Check karo agar limit cross ho chuki thi
+            if (progress.watchedCount >= task.limit) {
+                const timeSinceLastComplete = Date.now() - progress.timestamp;
+                
+                // Agar abhi ka time > cooldown time hai, iska matlab time pura ho gaya
+                if (timeSinceLastComplete > cooldownMs) {
+                    // Progress Reset karo Local Variable me
+                    progress = { watchedCount: 0, timestamp: 0 };
+                    
+                    // Database me bhi turant Reset karo taki user ko task khula mile
+                    const updates = {};
+                    updates[`adTaskProgress/${taskId}`] = progress;
+                    update(window.dbRef, updates);
+                    
+                    // Global state update
+                    window.adTaskProgress[taskId] = progress;
+                    console.log(`Task ${task.title} reset successfully.`);
+                }
+            }
+            // === 🔥 LOGIC END ===
             
             const taskElement = document.createElement('div');
             taskElement.className = 'ad-task-item';
             taskElement.style.backgroundColor = task.color || '#3B82F6';
 
-            const remainingCooldownMs = (progress.timestamp + (task.cooldownHours * 3600000)) - Date.now();
+            // Ab remaining time calculate karo (UI ke liye)
+            const remainingCooldownMs = (progress.timestamp + cooldownMs) - Date.now();
             const onCooldown = progress.watchedCount >= task.limit && remainingCooldownMs > 0;
             
             taskElement.innerHTML = `
@@ -1237,6 +1266,7 @@ function loadAdTasks() {
             `;
             container.appendChild(taskElement);
             
+            // Agar abhi bhi cooldown bacha hai to timer chalao
             if (onCooldown) {
                 startAdTaskCooldownTimer(taskId, remainingCooldownMs);
             }
