@@ -1017,34 +1017,39 @@ function formatTime(ms) {
 window.canMineAgain = () => { return (Date.now() - window.dailyMinedTimestamp) >= TWO_HOURS_MS; }
 
 window.watchAd = () => {
+    // 1. Basic Checks (Mining active or Cooldown)
     const miningStillActive = window.miningEndTime > Date.now();
     const isInCooldown = !window.canMineAgain() && window.dailyMinedTimestamp !== 0;
+    
     if (window.adsWatched >= window.ADS_REQUIRED) {
         WebApp.showAlert(window.canMineAgain() ? "A new session is ready. Click 'Start Mining'." : "Ads are complete. Wait for the 2h reset.");
         return;
     }
+    
     if (miningStillActive || isInCooldown) {
         WebApp.showAlert("Cannot watch ads while mining or in cooldown.");
         return;
     }
+
+    // 2. Button Update
     const watchAdBtn = document.getElementById('watchAdBtn');
     watchAdBtn.disabled = true;
-    watchAdBtn.innerText = '🎥 Loading Giga Ad...';
+    watchAdBtn.innerText = '🎥 Loading Monetag Ad...';
 
-    // === GIGA PUB LOGIC START ===
-    // Note: Assuming 'main' is the placement ID you want to use as per your request.
-    if (typeof window.showGiga === 'undefined') {
-        console.error("Giga Pub SDK not loaded.");
-        WebApp.showAlert("Ad service failed to load. Please check your internet connection.");
+    // === MONETAG LOGIC STARTS HERE ===
+    // Check if Monetag function exists (Make sure ID matches your head tag)
+    if (typeof show_9969043 === 'undefined') {
+        console.error("Monetag SDK not loaded.");
+        WebApp.showAlert("Ad failed to load. Please check internet.");
         watchAdBtn.disabled = false;
         watchAdBtn.innerText = '🎬 Watch Ad';
         return;
     }
 
-    window.showGiga("main").then(() => {
+    // Call Monetag Ad
+    show_9969043('pop').then(() => {
         // --- SUCCESS LOGIC ---
         const newWatchedCount = window.adsWatched + 1;
-        // BUG FIX (Robust): Ensure all values are numbers before calculation
         const currentCoins = parseFloat(window.coins) || 0;
         const rewardCoins = parseFloat(window.AD_REWARD_COINS) || 5;
         
@@ -1065,19 +1070,20 @@ window.watchAd = () => {
                 WebApp.showPopup({ message: `Congratulations! You can now start mining!` });
             }
             playSuccessSound();
-            loadUserData(); // Reload data to ensure sync
+            loadUserData();
         });
     }).catch((e) => {
         // --- ERROR LOGIC ---
-        console.error("Giga Pub Error:", e);
-        WebApp.showAlert("Ad was skipped or failed. No reward was given.");
+        console.error("Monetag Error:", e);
+        WebApp.showAlert("Ad was skipped or failed.");
     }).finally(() => {
+        // Reset Button
          if (window.adsWatched < window.ADS_REQUIRED) {
             watchAdBtn.disabled = false;
             watchAdBtn.innerText = '🎬 Watch Ad';
         }
     });
-    // === GIGA PUB LOGIC END ===
+    // === MONETAG LOGIC ENDS ===
 }
 
 function updateAdStatus() {
